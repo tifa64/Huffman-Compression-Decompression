@@ -1,12 +1,15 @@
 package huffman;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import static java.util.Arrays.stream;
 import java.util.HashMap;
 import java.util.PriorityQueue;
 
@@ -52,6 +55,7 @@ public class Huffman {
         getCodes(root,"");
         //building compressed file
         compressedfile("test.txt");
+        decompression();
     }
     // reading file 
     public static StringBuffer readFile(String filename) throws FileNotFoundException, IOException
@@ -125,10 +129,10 @@ public class Huffman {
         for (Character c: codes.keySet()){
             System.out.println("key "+ c +" code " + codes.get(c) );
             // 1 byte for the character and 4 bits for number of byts of the code
-            String a =codes.get(c);
-            int x= (int) Math.ceil(a.length()/8.0) ;
-            mapsize=mapsize+ 5+ x;
-             //mapsize+=12;
+            //String a =codes.get(c);
+            //int x= (int) Math.ceil(a.length()/8.0) ;
+           // mapsize=mapsize+ 5+ x;
+             mapsize+=12;
         }
         System.out.println("map size "+ mapsize );
         byte[] sizeofmap = ByteBuffer.allocate(4).putInt(mapsize).array();
@@ -136,10 +140,10 @@ public class Huffman {
         for (Character c: codes.keySet()){
             System.out.println("key "+ c +" code " + codes.get(c) );
             //putting character 
-            String k = c.toString();
-            byte[] w = k.getBytes();
-            //byte[] character = ByteBuffer.allocate(1).putInt(c).array(); Byz3l lma allocate 1 byte -_-
-            fos.write(w);
+           // String k = c.toString();
+            //byte[] w = k.getBytes();
+            byte[] character = ByteBuffer.allocate(4).putInt(c).array(); 
+            fos.write(character);
             // number of bits
             byte[] numofbits = ByteBuffer.allocate(4).putInt(codes.get(c).length()).array();
             fos.write(numofbits);          
@@ -176,4 +180,28 @@ public class Huffman {
         fos.write(binary); 
         System.out.println("++++++++reminder " + reminder);
     }
+    public static void decompression () throws FileNotFoundException, IOException{
+        File file = new File("out");
+        FileInputStream stream =null;
+        stream = new FileInputStream(file);
+        byte fileContent[] = new byte[(int) file.length()];
+        stream.read(fileContent);
+        stream.close();
+        
+     /* File file = new File(inputFile);
+        byte[] buffer = new byte[4];
+        InputStream is = new FileInputStream(filename);
+        System.out.println(buffer);
+        if (is.read(buffer) != buffer.length) { 
+            // do something 
+            int i = buffer[0];
+            System.out.println(" i am here");
+            System.out.println("i = " + i);
+        }else {
+            System.out.println("sssss i am here");
+        }
+        is.close();
+            }*/   
+    }
+       
 }    
