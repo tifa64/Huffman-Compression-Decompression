@@ -1,14 +1,11 @@
 package huffman;
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.math.BigInteger;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.PriorityQueue;
@@ -21,8 +18,11 @@ import java.util.PriorityQueue;
  */
 public class Huffman {
     
+    //To save characters and their number of appearence
     public static HashMap<Character, Integer> char_freq = new HashMap<Character, Integer>();
+    //to save code of each character
     public static HashMap<Character, String> codes = new HashMap<Character, String>();
+    // priority queue to store elements in ascending order accorging to their frequency to build huffman tree later
     public static PriorityQueue<Node> q = new PriorityQueue<Node>(new comparator());
     
     public static void main(String[] args) throws FileNotFoundException, IOException {
@@ -35,6 +35,7 @@ public class Huffman {
             char a = stringBuffer.charAt(i);
             if(char_freq.containsKey(a))
                 char_freq.put(a, char_freq.get(a)+1);
+            // first appearence of the character
             else
                 char_freq.put(a, 1);           
         }
@@ -42,26 +43,20 @@ public class Huffman {
          System.out.println(Arrays.asList(char_freq));
          
         // adding elements to the priority queue for elements
-        int n = 0;
         for (Character c: char_freq.keySet()){
-        //c = char_freq.keySet();
             q.add(new Node(c, char_freq.get(c)));
-        }    
-        for(Node node : q)
-        {
-            System.out.println(node.getC() + "="+ node.getF());
-        }
+        } 
+        // passing priority queue to buildHuffman function 
         Node root = buildHuffman(q);
-        System.out.println("Root node = " + root.getF());
-        System.out.println("Left node = " + root.getLeft().getF());
-        System.out.println("Right node = " + root.getRight().getF());
-        
+        // assign codes after building the tree
         getCodes(root,"");
+        //building compressed file
         compressedfile("test.txt");
     }
+    // reading file 
     public static StringBuffer readFile(String filename) throws FileNotFoundException, IOException
     {
-         File file = new File(filename);
+        File file = new File(filename);
 	FileReader fileReader = new FileReader(file);
 	BufferedReader bufferedReader = new BufferedReader(fileReader);
 	StringBuffer stringBuffer = new StringBuffer();
@@ -71,15 +66,15 @@ public class Huffman {
             stringBuffer.append("\n");
 	}
 	fileReader.close();
-        
-	//System.out.println("Contents of file:");
-	//System.out.println(stringBuffer.toString());
         return stringBuffer;
     }
+    // build huffman tree
     public static Node buildHuffman(PriorityQueue<Node> q)
     {
         while(q.size()!=1)
         {
+        // polling the two nodes with least frequency , adding them together then put their sum in a new node 
+        // do this untill there is only one node in the queue "root node" to traverse the tree 
         Node leftNode = q.poll();
         Node rightNode = q.poll();
         Node sumNode = new Node();
@@ -88,9 +83,11 @@ public class Huffman {
         sumNode.setF(leftNode.getF()+rightNode.getF());
         q.add(sumNode);
         }
+        
         Node root = q.poll();   
         return root;
 }
+    // traversing the tree and assign code to each character
     public static void getCodes(Node root, String code){
         if(root == null)
         {
@@ -98,34 +95,85 @@ public class Huffman {
         }
         if(root.getLeft()==null&&root.getRight()==null)
         {
-            System.out.println(root.getC() +"="+ code);
             codes.put(root.getC(),code);
         }
         getCodes(root.getLeft(),code+"0");
         getCodes(root.getRight(),code +"1");
     }
-    public static void compressedfile (String filename) throws FileNotFoundException, IOException{
+    // writing to the binary file 
+    // first write code size in 4 bytes
+    // map size in 4 bytes
+    // each character in 4 bytes ???? kan z3lan lma b3ml allocate le 1 byte
+    
+    public static void compressedfile (String filename) throws FileNotFoundException, IOException{ 
         File fout = new File("out");
-       // byte[] array;
 	FileOutputStream fos = new FileOutputStream(fout);
-	//BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(fos));
-        //StringBuilder bw = new StringBuilder();
-        String s = new String();
         StringBuffer stringBuffer = readFile(filename);
+        //getting code size to store in in the header of the file
+        int codeSize =0;
+        int mapSize =0;
+        for (Character c: char_freq.keySet()){
+            System.out.println("key "+ c +" value " + char_freq.get(c) );
+            codeSize += char_freq.get(c);
+        }
+        System.out.println("code size "+ codeSize );
+        //allocating the first 4 bytes in the file to the file size
+        byte[] sizeofcode = ByteBuffer.allocate(4).putInt(codeSize).array();
+        fos.write(sizeofcode);
+        //calculating map size
+        int mapsize=0;
+        for (Character c: codes.keySet()){
+            System.out.println("key "+ c +" code " + codes.get(c) );
+            // 1 byte for the character and 4 bits for number of byts of the code
+            String a =codes.get(c);
+            int x= (int) Math.ceil(a.length()/8.0) ;
+            mapsize=mapsize+ 5+ x;
+             //mapsize+=12;
+        }
+        System.out.println("map size "+ mapsize );
+        byte[] sizeofmap = ByteBuffer.allocate(4).putInt(mapsize).array();
+        fos.write(sizeofmap);       
+        for (Character c: codes.keySet()){
+            System.out.println("key "+ c +" code " + codes.get(c) );
+            //putting character 
+            String k = c.toString();
+            byte[] w = k.getBytes();
+            //byte[] character = ByteBuffer.allocate(1).putInt(c).array(); Byz3l lma allocate 1 byte -_-
+            fos.write(w);
+            // number of bits
+            byte[] numofbits = ByteBuffer.allocate(4).putInt(codes.get(c).length()).array();
+            fos.write(numofbits);          
+            //String a =codes.get(c);
+            //int x= (int) Math.ceil(a.length()/8.0) ;           
+            byte[] bits = ByteBuffer.allocate(4).putInt(Integer.parseInt(codes.get(c))).array();
+            fos.write(bits);
+        } 
+        String reminder ="";      
         for(Character c : stringBuffer.toString().toCharArray())
         {
              String code = codes.get(c);
-            // System.out.println(code);
-             s += code;
-             //bw.append(code);
-             if(s.length()%8 == 0)
-             {       
-                 byte[] arr  = new BigInteger(s,2).toByteArray();
-                 fos.write(arr);
-                 s="";
-                 //bw.setLength(0);
-              }
-            //bw.close();
+             // string of codes this may be greater that 8 in lenght
+             String s = reminder + code;
+             
+             int len = s.length();
+             int max = len-len%8;
+             //System.out.println("len "+len);          
+             if (len<8){
+                 reminder = s;
+             }else{
+                 int start =0;
+                 int end=8;
+                 while (end<=max){
+                    byte binary = (byte)Integer.parseInt(s.substring(start, end),2);
+                    start=end;
+                    end+=8;
+                    fos.write(binary);                     
+                 }
+                 reminder = s.substring(max,len);               
+             }
         }
+        byte binary = (byte)Integer.parseInt(reminder,2);
+        fos.write(binary); 
+        System.out.println("++++++++reminder " + reminder);
     }
 }    
