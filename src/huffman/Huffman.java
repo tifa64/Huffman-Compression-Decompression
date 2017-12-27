@@ -46,7 +46,7 @@ public class Huffman {
          System.out.println(Arrays.asList(char_freq));
          
         // adding elements to the priority queue for elements
-        for (Character c: char_freq.keySet()){
+        for(Character c: char_freq.keySet()){
             q.add(new Node(c, char_freq.get(c)));
         } 
         // passing priority queue to buildHuffman function 
@@ -67,7 +67,6 @@ public class Huffman {
 	String line;
 	while ((line = bufferedReader.readLine()) != null) {
             stringBuffer.append(line);
-            stringBuffer.append("\n");
 	}
 	fileReader.close();
         return stringBuffer;
@@ -86,8 +85,7 @@ public class Huffman {
         sumNode.setRight(rightNode);
         sumNode.setF(leftNode.getF()+rightNode.getF());
         q.add(sumNode);
-        }
-        
+        }        
         Node root = q.poll();   
         return root;
 }
@@ -116,9 +114,9 @@ public class Huffman {
         //getting code size to store in in the header of the file
         int codeSize =0;
         int mapSize =0;
-        for (Character c: char_freq.keySet()){
-            System.out.println("key "+ c +" value " + char_freq.get(c) );
-            codeSize += char_freq.get(c);
+        for (Character c: codes.keySet()){
+            
+            codeSize += codes.get(c).length() * char_freq.get(c);
         }
         System.out.println("code size "+ codeSize );
         //allocating the first 4 bytes in the file to the file size
@@ -132,7 +130,7 @@ public class Huffman {
             //String a =codes.get(c);
             //int x= (int) Math.ceil(a.length()/8.0) ;
            // mapsize=mapsize+ 5+ x;
-             mapsize+=12;
+             mapsize+=10;
         }
         System.out.println("map size "+ mapsize );
         byte[] sizeofmap = ByteBuffer.allocate(4).putInt(mapsize).array();
@@ -142,14 +140,21 @@ public class Huffman {
             //putting character 
            // String k = c.toString();
             //byte[] w = k.getBytes();
-            byte[] character = ByteBuffer.allocate(4).putInt(c).array(); 
+            byte[] character = ByteBuffer.allocate(2).putChar(c).array(); 
             fos.write(character);
             // number of bits
             byte[] numofbits = ByteBuffer.allocate(4).putInt(codes.get(c).length()).array();
             fos.write(numofbits);          
             //String a =codes.get(c);
-            //int x= (int) Math.ceil(a.length()/8.0) ;           
-            byte[] bits = ByteBuffer.allocate(4).putInt(Integer.parseInt(codes.get(c))).array();
+            //int x= (int) Math.ceil(a.length()/8.0) ; 
+            
+            /*short a = Short.parseShort(b, 2);
+            ByteBuffer bytes = ByteBuffer.allocate(2).putShort(a);
+
+            byte[] array = bytes.array();
+            int z =Integer.parseInt((codes.get(c)),2);
+           */
+            byte[] bits = ByteBuffer.allocate(4).putInt(Integer.parseInt((codes.get(c)),2)).array();
             fos.write(bits);
         } 
         String reminder ="";      
