@@ -200,7 +200,7 @@ public class Huffman {
     // writing to the binary file 
     // first write code size in 4 bytes
     // map size in 4 bytes
-    // each character in 4 bytes ???? kan z3lan lma b3ml allocate le 1 byte
+    // each character in 2 bytes
     
     public static boolean compressedfile (String filename) throws  IOException{
         // Reading File content
