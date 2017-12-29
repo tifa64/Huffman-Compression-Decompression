@@ -285,7 +285,6 @@ public class Huffman {
             }
         }
 
-        // زعل هنا فشلت اخر كام حرف
         if(!remainder.equals("")) {
             byte binary = (byte) Integer.parseInt(remainder, 2);
             fos.write(binary);
