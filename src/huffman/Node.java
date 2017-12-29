@@ -13,10 +13,22 @@ public class Node {
     //storing frequency , character ,left and right for each node 
     private char c;
     private int f;
+
+    public byte getB() {
+        return b;
+    }
+
+    private  byte b;
     private Node left=null,right=null;
 
     public Node(char c, int f) {
         this.c = c;
+        this.f = f;
+        this.right=null;
+        this.left=null;
+    }
+    public Node(byte b, int f) {
+        this.b = b;
         this.f = f;
         this.right=null;
         this.left=null;
