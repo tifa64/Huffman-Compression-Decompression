@@ -2,15 +2,13 @@ package huffman;
 import com.sun.tools.doclets.formats.html.SourceToHTMLConverter;
 
 import java.io.*;
+import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
+import java.util.*;
 
 import static java.util.Arrays.setAll;
 import static java.util.Arrays.sort;
 import static java.util.Arrays.stream;
-import java.util.HashMap;
-import java.util.PriorityQueue;
-import java.util.Scanner;
 
 
 /**
@@ -25,6 +23,8 @@ public class Huffman {
     public static HashMap<Byte, String> bcodes = new HashMap<Byte, String>();
     public static HashMap<String, Character> codeDecompression = new HashMap<String, Character>();
     public static HashMap<String, Byte> bcodeDecompression = new HashMap<String, Byte>();
+    public static HashMap<String,ArrayList<String>> filenames = new HashMap<>();
+
     public static HashMap<Character, String> codes = new HashMap<Character, String>();
     // priority queue to store elements in ascending order accorging to their frequency to build huffman tree later
     public static PriorityQueue<Node> q = new PriorityQueue<Node>(new comparator());
@@ -32,7 +32,7 @@ public class Huffman {
     public static void main(String[] args) throws IOException {
         Scanner scanner = new Scanner(System.in);
         System.out.println("\t\t\t\t Huffman Compression/Decompression\t\n");
-        System.out.println("Enter file name followed by -c for compression or -d for decompression followed by -t for text files or -b for binary files");
+        System.out.println("Enter file name followed by -c for compression or -d for decompression followed by -t for text files, -b for binary files or -dir for folders");
         while(true) {
             clearMaps();
             System.out.print(">");
@@ -120,7 +120,32 @@ public class Huffman {
                         continue;
                     }
 
-                } else {
+                }
+                else if(arg2.equals("-dir"))
+                {
+                        if(arg1.equals("-c")) {
+                            if(compressFolder(fname, filenames))
+                            {
+                                System.out.println("Folder compressed successfully");
+                                continue;
+                            }
+                            else{
+                                System.out.println("Cannot compress folder");
+                                continue;
+                            }
+                        }
+                        if(arg1.equals("-d")) {
+                            if(decompressFolder(fname, filenames)) {
+                                System.out.println("Folder decompressed successfully");
+                            }
+                            else
+                            {
+                                System.out.println("Folder decompress failed");
+                            }
+                            continue;
+                        }
+                }
+                else {
                     System.out.println("Invalid Argument");
                     continue;
                 }
@@ -133,6 +158,10 @@ public class Huffman {
             catch (ArrayIndexOutOfBoundsException ae)
             {
                 System.out.println("Decompression may have failed, exit and try again.");
+                continue;
+            }
+            catch (NullPointerException ne){
+                System.out.println("Cannot compress an empty file.");
                 continue;
             }
         }
@@ -297,7 +326,6 @@ public class Huffman {
         }
         fos.close();
         return true;
-
 
     }
 
@@ -572,6 +600,203 @@ public class Huffman {
         }
         fos.close();
         return true;
+    }
+    public static boolean compressFolder(String foldername ,HashMap<String,ArrayList<String> >results) throws IOException {
+        File fout = new File(foldername.toString() + ".cmp");
+        FileOutputStream fos = new FileOutputStream(fout);
+        int foldersize = 0;
+        ArrayList<String> fname = new ArrayList<>();
+        File[] files = new File(foldername).listFiles();
+        //If this pathname does not denote a directory, then listFiles() returns null.
+        for (File file : files) {
+            if (file.isFile()) {
+                fname.add(file.getName());
+                foldersize += file.length();
+            }
+        }
+        results.put(foldername,fname);
+        for(File f:files){
+            clearMaps();
+            System.out.println("Currently decompressing file: "+f.getName()+" in folder: "+foldername+".");
+            byte[] fileBytes=null;
+            fileBytes = readBinary(f.getPath());
+            for (Byte b : fileBytes) {
+            if (byte_freq.containsKey(b))
+                byte_freq.put(b, byte_freq.get(b) + 1);
+            else
+                byte_freq.put(b, 1);
+
+        }
+
+        for (Byte b : byte_freq.keySet()) {
+            q.add(new Node(b, byte_freq.get(b)));
+        }
+
+        Node root = buildHuffman(q);
+        getCodes(root, "");
+
+        //getting code size to store in in the header of the file
+        int codeSize = 0;
+        int mapSize = 0;
+
+        for (Byte b : bcodes.keySet()) {
+            try {
+                codeSize += bcodes.get(b).length() * byte_freq.get(b);
+            } catch (Exception e) {
+                System.out.println(e.getCause());
+            }
+        }
+//        System.out.println("code size "+ codeSize );
+        int codesbyte = (int) Math.ceil((double) codeSize / 8);
+//        System.out.println("code size in bytes" + codesbyte );
+        //allocating the first 4 bytes in the file to the file size
+        byte[] sizeofcode = ByteBuffer.allocate(4).putInt(codesbyte).array();
+        fos.write(sizeofcode);
+        // map size
+
+        byte[] sizeofmap = ByteBuffer.allocate(4).putInt(bcodes.size()).array();
+        fos.write(sizeofmap);
+        for (Byte b : bcodes.keySet()) {
+//            System.out.println("key "+ b +" code " + bcodes.get(b) );
+            //putting character
+            // byte[] character = ByteBuffer.allocate(2).putChar(c).array();
+            fos.write(b);
+            // number of bits
+            byte[] numofbits = ByteBuffer.allocate(4).putInt(bcodes.get(b).length()).array();
+            fos.write(numofbits);
+            // putting ASQUII code ex 1 -> 110001
+            byte[] bits = bcodes.get(b).getBytes();
+            fos.write(bits);
+        }
+
+        String remainder = "";
+        try {
+
+            for (Byte b : fileBytes) {
+                String code = bcodes.get(b);
+                String s = remainder + code;
+                int len = s.length();
+                int max = len - len % 8;
+                if (len < 8) {
+                    remainder = s;
+                } else {
+                    int start = 0;
+                    int end = 8;
+                    donothing();
+                    while (end <= max) {
+                        byte binary = (byte) Integer.parseInt(s.substring(start, end), 2);
+                        start = end;
+                        end += 8;
+                        fos.write(binary);
+                    }
+                    remainder = s.substring(max, len);
+                }
+            }
+            if (!remainder.equals("")) {
+                byte binary = (byte) Integer.parseInt(remainder, 2);
+                fos.write(binary);
+            }
+
+        } catch (Exception e) {
+            System.out.println(e.getCause());
+        }
+        }
+        if(fout.length()>foldersize)
+        {
+            fout.delete();
+            return false;
+        }
+        fos.close();
+        return true;
+    }
+    public static boolean decompressFolder(String foldername,HashMap<String,ArrayList<String> >filenames) throws IOException {
+        File file = new File(foldername);
+        FileInputStream stream =null;
+        stream = new FileInputStream(file);
+        byte fileContent[] = new byte[(int) file.length()];
+        stream.read(fileContent);
+        stream.close();
+        String decompname = foldername.split("\\.")[0];
+        File theDir = new File(decompname+"-decomp");
+        // if the directory does not exist, create it
+        if (!theDir.exists()) {
+            theDir.mkdir();
+        }
+        int i=0,index=0,codesize,mapsize;
+        ArrayList<String> fnames = filenames.get(foldername.split("\\.")[0]);
+        for(String string: fnames)
+            {
+                System.out.println("Currently compressing file: "+string+" in folder: "+decompname+".");
+                clearMaps();
+                String s= "";
+                byte b;
+                // first 4 bytes as code size
+                for (int l=i;l<i+4;l++){
+                    s += String.format("%02x", fileContent[l]);
+                }
+                i+=4;
+                codesize = Integer.parseInt(s, 16);
+                s="";
+                // map size 2nd four bytes
+                for (int l =i;l<i+4;l++){
+                    s += String.format("%02x", fileContent[l]);
+
+                }
+                i+=4;
+                donothing();
+                mapsize= Integer.parseInt(s, 16);
+                index = i;
+                s="";
+                // looping throught the map to extract characters and their code
+                for (int j=0;j<mapsize;j++){
+                    int size =0;
+                    //First byte for character
+                    b =  fileContent[index];
+                    index++;
+                    // size of huffman code of each character
+                    for (i = index; i < index + 4; i++) {
+                        s += String.format("%02x", fileContent[i]);
+                    }
+                    size = Integer.parseInt(s, 16);
+                    s = "";
+                    index = i;
+                    String code = new String();
+                    //huffman code
+                    for (i = index; i < index + size; i++) {
+                        code += (char) fileContent[i];
+                    }
+                    bcodeDecompression.put(code, b);
+                    index = i;
+                }
+                s = "";
+                s += String.format("%8s", Integer.toBinaryString(fileContent[i] & 0xFF)).replace(' ', '0');
+                s = "";
+                String token = "";
+                File decompressedFile = new File(decompname+"-decomp"+"/"+string) ;
+                OutputStream fos = new FileOutputStream(decompressedFile);
+                int remainder = 0;
+                for (i=index;i<codesize+index-1;i++){
+                    s += String.format("%8s", Integer.toBinaryString(fileContent[i] & 0xFF)).replace(' ', '0');
+                    for (int k=0;k<s.length() ;k++){
+                        token += s.charAt(k);
+                        if(bcodeDecompression.containsKey(token))
+                        {
+                            fos.write(bcodeDecompression.get(token));
+                            donothing();
+                            remainder = k;
+                            token ="";
+                        }
+                    }
+                    if (remainder != 0) {
+                        s = s.substring(remainder + 1, s.length());
+                        remainder = 0;
+                    }
+                    token = "";
+                }
+                fos.close();
+                i++;
+            }
+            return true;
     }
     public static void donothing()
     {
